@@ -93,7 +93,4 @@ public class NodeScanner {
         // 模擬發送上線通知
         scanner.sendAnnouncement("HELLO_AIRSHIT_PROJECT");
     }
-
-    // jwjqdbqbdbq
-    // hbabdabx
 }
