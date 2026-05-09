@@ -36,7 +36,7 @@ public class NodeScanner {
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     socket.receive(packet);
-                    
+
                     String message = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
                     String senderIp = packet.getAddress().getHostAddress();
 
@@ -93,4 +93,7 @@ public class NodeScanner {
         // 模擬發送上線通知
         scanner.sendAnnouncement("HELLO_AIRSHIT_PROJECT");
     }
+
+    // jwjqdbqbdbq
+    // hbabdabx
 }
