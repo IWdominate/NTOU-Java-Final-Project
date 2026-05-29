@@ -46,4 +46,5 @@ public class ChatPanel extends JPanel {
         chatArea.append(message + "\n");
         chatArea.setCaretPosition(chatArea.getDocument().getLength());
     }
+
 }

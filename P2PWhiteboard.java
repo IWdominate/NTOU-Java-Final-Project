@@ -1,81 +1,94 @@
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
-import javafx.stage.Stage;
-
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 
-public class P2PWhiteboard extends Application {
+public class P2PWhiteboard {
     private String remoteIp = "10.210.xx.xx"; // ***請填入組員的 ZeroTier IP***
     private static final int PORT = 50001;
-    private GraphicsContext gc;
+    private WhiteboardPanel whiteboardPanel;
+    private MainFrame mainFrame;
 
-    @Override
-    public void start(Stage primaryStage) {
-        Canvas canvas = new Canvas(800, 600);
-        gc = canvas.getGraphicsContext2D();
-        gc.setLineWidth(2.0);
-
-        // 滑鼠拖動事件：本地繪圖 + 發送座標
-        canvas.setOnMouseDragged(e -> {
-            double x = e.getX();
-            double y = e.getY();
-            drawPoint(x, y, Color.BLACK); // 本地畫
-            sendData(x + "," + y);        // 傳給對方
-        });
-
-        startServer(); // 啟動接收端
-
-        primaryStage.setScene(new Scene(new StackPane(canvas)));
-        primaryStage.setTitle("P2P 協作白板 - 我的 IP: 10.210.63.104");
-        primaryStage.show();
-    }
-
-    // 在畫布上畫一個點
-    private void drawPoint(double x, double y, Color color) {
-        Platform.runLater(() -> {
-            gc.setFill(color);
-            gc.fillOval(x, y, 4, 4);
-        });
+    public P2PWhiteboard(WhiteboardPanel whiteboardPanel, MainFrame mainFrame) {
+        this.whiteboardPanel = whiteboardPanel;
+        this.mainFrame = mainFrame;
     }
 
     // TCP Server：接收對方的繪圖座標
-    private void startServer() {
+    public void startServer() {
         new Thread(() -> {
             try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+                System.out.println("Server started on port " + PORT);
                 while (true) {
                     try (Socket socket = serverSocket.accept();
-                         BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+                            BufferedReader in = new BufferedReader(
+                                    new InputStreamReader(socket.getInputStream()))) {
                         String msg = in.readLine();
                         if (msg != null) {
-                            String[] coords = msg.split(",");
-                            drawPoint(Double.parseDouble(coords[0]), 
-                                      Double.parseDouble(coords[1]), Color.RED); // 對方畫的用紅色顯示
+                            String[] parts = msg.split(",");
+                            if (parts[0].equals("DRAW")) {
+                                // DRAW,x1,y1,x2,y2,r,g,b,size
+                                int x1 = Integer.parseInt(parts[1]);
+                                int y1 = Integer.parseInt(parts[2]);
+                                int x2 = Integer.parseInt(parts[3]);
+                                int y2 = Integer.parseInt(parts[4]);
+                                Color color = new Color(
+                                        Integer.parseInt(parts[5]),
+                                        Integer.parseInt(parts[6]),
+                                        Integer.parseInt(parts[7]));
+                                int size = Integer.parseInt(parts[8]);
+                                // Draw on whiteboard from network
+                                SwingUtilities.invokeLater(() -> whiteboardPanel.drawLine(x1, y1, x2, y2, color, size));
+                            } else if (parts[0].equals("CLEAR")) {
+                                SwingUtilities.invokeLater(() -> whiteboardPanel.clear());
+                            } else if (parts[0].equals("CHAT")) {
+                                // CHAT,username,message
+                                String chatMsg = parts[1] + ": " + parts[2];
+                                SwingUtilities.invokeLater(() -> mainFrame.getChatPanel().appendMessage(chatMsg));
+                            }
                         }
-                    } catch (Exception e) { e.printStackTrace(); }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
-            } catch (IOException e) { e.printStackTrace(); }
-        }).start();
-    }
-
-    // TCP Client：傳送自己的座標給對方
-    private void sendData(String data) {
-        new Thread(() -> {
-            try (Socket socket = new Socket(remoteIp, PORT);
-                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
-                out.println(data);
             } catch (IOException e) {
-                // 連不到對方是正常的，除非對方也開啟了程式
+                e.printStackTrace();
             }
         }).start();
     }
 
-    public static void main(String[] args) {
-        launch(args);
+    // TCP Client：傳送繪圖資料給對方
+    public void sendDraw(int x1, int y1, int x2, int y2, Color color, int size) {
+        String data = "DRAW," + x1 + "," + y1 + "," + x2 + "," + y2 + ","
+                + color.getRed() + "," + color.getGreen() + "," + color.getBlue()
+                + "," + size;
+        sendData(data);
+    }
+
+    // Send clear event
+    public void sendClear() {
+        sendData("CLEAR");
+    }
+
+    // Send chat message
+    public void sendChat(String username, String message) {
+        sendData("CHAT," + username + "," + message);
+    }
+
+    // Generic send
+    private void sendData(String data) {
+        new Thread(() -> {
+            try (Socket socket = new Socket(remoteIp, PORT);
+                    PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+                out.println(data);
+            } catch (IOException e) {
+                // Can't reach peer, that's okay
+            }
+        }).start();
+    }
+
+    public void setRemoteIp(String ip) {
+        this.remoteIp = ip;
     }
 }
