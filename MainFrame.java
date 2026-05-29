@@ -134,16 +134,15 @@ public class MainFrame extends JFrame {
         toolbar.add(statusLabel);
         add(toolbar, BorderLayout.NORTH);
 
-        // Start P2P connection
-        if (!remoteIp.isEmpty()) {
-            p2p = new P2PWhiteboard(whiteboardPanel, this);
-            p2p.setRemoteIp(remoteIp);
-            p2p.startServer();
-            statusLabel.setText("Status: Online");
-        }
+        // Start P2P connection. Every client is both a server and a client.
+        p2p = new P2PWhiteboard(whiteboardPanel, this, username,
+                peerCount -> statusLabel.setText("Status: Online | Peers: " + peerCount));
+        p2p.start(remoteIp);
+        statusLabel.setText("Status: Online | Peers: 0");
 
-        // Hook whiteboard to send draw events
+        // Hook UI panels to send events
         whiteboardPanel.setP2P(p2p, username);
+        chatPanel.setP2P(p2p);
 
         setVisible(true);
     }
@@ -154,6 +153,11 @@ public class MainFrame extends JFrame {
 
     public String getUsername() {
         return username;
+    }
+
+    public void showNetworkError(String message) {
+        statusLabel.setText("Status: Network error");
+        System.err.println(message);
     }
 
 }

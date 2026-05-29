@@ -7,6 +7,7 @@ public class ChatPanel extends JPanel {
     private JTextArea chatArea;
     private JTextField inputField;
     private JButton sendBtn;
+    private P2PWhiteboard p2p;
 
     public ChatPanel() {
         setLayout(new BorderLayout());
@@ -38,13 +39,19 @@ public class ChatPanel extends JPanel {
         if (!msg.isEmpty()) {
             appendMessage("You: " + msg);
             inputField.setText("");
-            // TODO: send to network later
+            if (p2p != null) {
+                p2p.sendChat(msg);
+            }
         }
     }
 
     public void appendMessage(String message) {
         chatArea.append(message + "\n");
         chatArea.setCaretPosition(chatArea.getDocument().getLength());
+    }
+
+    public void setP2P(P2PWhiteboard p2p) {
+        this.p2p = p2p;
     }
 
 }

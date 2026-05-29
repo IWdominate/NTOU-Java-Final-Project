@@ -130,6 +130,9 @@ public class WhiteboardPanel extends JPanel {
                     // eraser
                     Point current = e.getPoint();
                     drawLine(lastPoint.x, lastPoint.y, current.x, current.y, Color.WHITE, brushSize);
+                    if (p2p != null) {
+                        p2p.sendDraw(lastPoint.x, lastPoint.y, current.x, current.y, Color.WHITE, brushSize);
+                    }
                     Graphics g = getGraphics();
                     texts.removeIf(t -> t.contains(current.x, current.y, g));
                     repaint();
