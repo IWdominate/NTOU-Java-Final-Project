@@ -10,6 +10,8 @@ public class MainFrame extends JFrame {
     private JLabel statusLabel;
     private P2PWhiteboard p2p;
     private String username;
+    private int peerCount = 0;
+    private boolean discoveryWarning = false;
 
     public MainFrame(String username, String remoteIp) {
         this.username = username;
@@ -26,6 +28,7 @@ public class MainFrame extends JFrame {
         chatPanel.setPreferredSize(new Dimension(300, 700));
         add(chatPanel, BorderLayout.EAST);
 
+        JPanel topBar = new JPanel(new BorderLayout());
         JPanel toolbar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
         JButton clearBtn = new JButton("Clear");
         JButton eraserBtn = new JButton("Eraser");
@@ -130,15 +133,16 @@ public class MainFrame extends JFrame {
         toolbar.add(customColorBtn);
         toolbar.add(new JLabel(" | Color: "));
         toolbar.add(colorIndicator);
-        toolbar.add(new JLabel(" | "));
-        toolbar.add(statusLabel);
-        add(toolbar, BorderLayout.NORTH);
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+        topBar.add(toolbar, BorderLayout.CENTER);
+        topBar.add(statusLabel, BorderLayout.EAST);
+        add(topBar, BorderLayout.NORTH);
 
         // Start P2P connection. Every client is both a server and a client.
         p2p = new P2PWhiteboard(whiteboardPanel, this, username,
-                peerCount -> statusLabel.setText("Status: Online | Peers: " + peerCount));
+                this::setPeerCount);
         p2p.start(remoteIp);
-        statusLabel.setText("Status: Online | Peers: 0");
+        updateStatus();
 
         // Hook UI panels to send events
         whiteboardPanel.setP2P(p2p, username);
@@ -158,6 +162,22 @@ public class MainFrame extends JFrame {
     public void showNetworkError(String message) {
         statusLabel.setText("Status: Network error");
         System.err.println(message);
+    }
+
+    public void showNetworkWarning(String message) {
+        discoveryWarning = true;
+        updateStatus();
+        System.err.println(message);
+    }
+
+    private void setPeerCount(int peerCount) {
+        this.peerCount = peerCount;
+        updateStatus();
+    }
+
+    private void updateStatus() {
+        String suffix = discoveryWarning ? " | Discovery off" : "";
+        statusLabel.setText("Status: Online | Peers: " + peerCount + suffix);
     }
 
 }

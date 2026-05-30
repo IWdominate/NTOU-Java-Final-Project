@@ -125,7 +125,7 @@ public class P2PWhiteboard {
                     }
                 }
             } catch (IOException e) {
-                SwingUtilities.invokeLater(() -> mainFrame.showNetworkError("UDP discovery failed: " + e.getMessage()));
+                SwingUtilities.invokeLater(() -> mainFrame.showNetworkWarning("UDP discovery failed: " + e.getMessage()));
             }
         }, "p2p-discovery-listener");
         listenerThread.setDaemon(true);
