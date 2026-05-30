@@ -96,6 +96,10 @@ public class P2PWhiteboard {
                     String text = decode(parts[2]);
                     SwingUtilities.invokeLater(() -> mainFrame.getChatPanel().appendMessage(sender + ": " + text));
                     break;
+                case "TEXTS":
+                    String snapshot = decode(parts[1]);
+                    SwingUtilities.invokeLater(() -> whiteboardPanel.applyTextSnapshot(snapshot));
+                    break;
                 default:
                     break;
             }
@@ -200,6 +204,10 @@ public class P2PWhiteboard {
 
     public void sendChat(String message) {
         sendToPeers("CHAT|" + encode(username) + "|" + encode(message));
+    }
+
+    public void sendTextSnapshot(String snapshot) {
+        sendToPeers("TEXTS|" + encode(snapshot));
     }
 
     private void sendHello(String peerIp) {

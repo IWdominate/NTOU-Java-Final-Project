@@ -1,7 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 
 public class WhiteboardPanel extends JPanel {
 
@@ -70,6 +72,9 @@ public class WhiteboardPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (isTextMode && selectedText != null) {
+                    syncTextSnapshot();
+                }
                 lastPoint = null;
                 selectedText = null;
                 dragOffset = null;
@@ -87,6 +92,7 @@ public class WhiteboardPanel extends JPanel {
                             if (SwingUtilities.isRightMouseButton(e)) {
                                 texts.remove(i);
                                 repaint();
+                                syncTextSnapshot();
                                 return;
                             }
 
@@ -98,6 +104,7 @@ public class WhiteboardPanel extends JPanel {
                                 if (newText != null && !newText.isEmpty()) {
                                     t.text = newText;
                                     repaint();
+                                    syncTextSnapshot();
                                 }
                             }
                             return;
@@ -112,6 +119,7 @@ public class WhiteboardPanel extends JPanel {
                         if (text != null && !text.isEmpty()) {
                             texts.add(new TextItem(text, e.getX(), e.getY(), fontSize, currentColor));
                             repaint();
+                            syncTextSnapshot();
                         }
                     }
                 }
@@ -134,8 +142,11 @@ public class WhiteboardPanel extends JPanel {
                         p2p.sendDraw(lastPoint.x, lastPoint.y, current.x, current.y, Color.WHITE, brushSize);
                     }
                     Graphics g = getGraphics();
-                    texts.removeIf(t -> t.contains(current.x, current.y, g));
+                    boolean removedText = texts.removeIf(t -> t.contains(current.x, current.y, g));
                     repaint();
+                    if (removedText) {
+                        syncTextSnapshot();
+                    }
                     lastPoint = current;
                 } else if (!isTextMode && !isEraser && lastPoint != null) {
                     // normal drawing
@@ -225,7 +236,62 @@ public class WhiteboardPanel extends JPanel {
         if (selectedText != null) {
             selectedText.fontSize = newSize;
             repaint();
+            syncTextSnapshot();
         }
+    }
+
+    private void syncTextSnapshot() {
+        if (p2p != null) {
+            p2p.sendTextSnapshot(createTextSnapshot());
+        }
+    }
+
+    private String createTextSnapshot() {
+        StringBuilder builder = new StringBuilder();
+        for (TextItem t : texts) {
+            if (builder.length() > 0) {
+                builder.append(";");
+            }
+            builder.append(encode(t.text)).append(",")
+                    .append(t.x).append(",")
+                    .append(t.y).append(",")
+                    .append(t.fontSize).append(",")
+                    .append(t.color.getRed()).append(",")
+                    .append(t.color.getGreen()).append(",")
+                    .append(t.color.getBlue());
+        }
+        return builder.toString();
+    }
+
+    public void applyTextSnapshot(String snapshot) {
+        texts.clear();
+        if (snapshot != null && !snapshot.isEmpty()) {
+            String[] items = snapshot.split(";");
+            for (String item : items) {
+                String[] parts = item.split(",", -1);
+                if (parts.length == 7) {
+                    texts.add(new TextItem(
+                            decode(parts[0]),
+                            Integer.parseInt(parts[1]),
+                            Integer.parseInt(parts[2]),
+                            Integer.parseInt(parts[3]),
+                            new Color(
+                                    Integer.parseInt(parts[4]),
+                                    Integer.parseInt(parts[5]),
+                                    Integer.parseInt(parts[6]))));
+                }
+            }
+        }
+        repaint();
+    }
+
+    private static String encode(String value) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String decode(String value) {
+        return new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
     }
 
     public void saveAsPNG() {
